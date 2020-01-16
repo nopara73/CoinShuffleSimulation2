@@ -12,7 +12,11 @@ namespace CoinShuffleSimulation2
             var satoshi = new Peer("Satoshi");
             satoshi.Connect(bob);
 
-            alice.Broadcast("Hello P2P World!");
+            // Tick.
+            // Announcement. Every participant generates a fresh ephemeral encryptiondecryption key pair, and broadcasts the resulting public encryption key.
+            alice.BroadcastPubKey();
+            bob.BroadcastPubKey();
+            satoshi.BroadcastPubKey();
 
             Console.WriteLine("Press a key to exit...");
             Console.ReadKey();
