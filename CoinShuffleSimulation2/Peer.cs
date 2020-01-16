@@ -95,7 +95,15 @@ namespace CoinShuffleSimulation2
                 {
                     var stripped = Decrypt(SecretKey, onions).ToList();
                     stripped.Shuffle();
-                    Broadcast(new Message(MessageType.Onions, stripped));
+
+                    if (NBitcoinHelpers.IsScript(stripped.First()))
+                    {
+                        Broadcast(new Message(MessageType.ShuffledScripts, stripped));
+                    }
+                    else
+                    {
+                        Broadcast(new Message(MessageType.Onions, stripped));
+                    }
                 }
             }
         }

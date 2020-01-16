@@ -7,6 +7,7 @@ namespace CoinShuffleSimulation2.Messages
     public enum MessageType
     {
         PublicKey,
-        Onions
+        Onions,
+        ShuffledScripts
     }
 }
