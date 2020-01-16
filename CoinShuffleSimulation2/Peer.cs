@@ -23,8 +23,9 @@ namespace CoinShuffleSimulation2
 
         private Key SecretKey { get; } = new Key();
         private PubKey PublicKey => SecretKey.PubKey;
-        private Script Script => PublicKey.ScriptPubKey;
+        private Script OutputScript => PublicKey.ScriptPubKey;
         private List<PubKey> AllPubKeys { get; } = new List<PubKey>();
+        private List<string> Onions { get; } = new List<string>();
 
         internal void BroadcastPubKey()
         {
@@ -61,7 +62,7 @@ namespace CoinShuffleSimulation2
 
             if (message.Type == MessageType.PublicKey)
             {
-                var pubKey = new PubKey(message.Data);
+                var pubKey = new PubKey(message.GetDataString());
                 AllPubKeys.Add(pubKey);
 
                 if (AllPubKeys.Count == RequiredPeerCount)
@@ -69,32 +70,60 @@ namespace CoinShuffleSimulation2
                     // every participant (say participant i in a predefined shuffling
                     // order) uses the encryption keys of every participant j > i to create a layered
                     // encryption of her output address.
-                    string layeredEncryption = LayeredEncrypt();
-                    Broadcast(new Message(MessageType.LayeredEncryption, layeredEncryption));
+                    string onion = OnionEncrypt(AllPubKeys, OutputScript.ToString());
+                    Broadcast(new Message(MessageType.Onions, onion));
                 }
             }
-            else if (message.Type == MessageType.LayeredEncryption)
+            else if (message.Type == MessageType.Onions)
             {
+                var onions = message.GetDataCollection();
+                if (onions.Count() == 1)
+                {
+                    Onions.Add(onions.Single());
 
+                    if (Onions.Count == RequiredPeerCount)
+                    {
+                        if (SecretKey.CanDecrypt(Onions.First()))
+                        {
+                            var stripped = Decrypt(SecretKey, Onions).ToList();
+                            stripped.Shuffle();
+                            Broadcast(new Message(MessageType.Onions, stripped));
+                        }
+                    }
+                }
+                else if (SecretKey.CanDecrypt(onions.First()))
+                {
+                    var stripped = Decrypt(SecretKey, onions).ToList();
+                    stripped.Shuffle();
+                    Broadcast(new Message(MessageType.Onions, stripped));
+                }
             }
         }
 
-        private string LayeredEncrypt()
+        private static IEnumerable<string> Decrypt(Key secretKey, IEnumerable<string> onions)
         {
-            string layeredEncryption = null;
-            foreach (var pk in AllPubKeys.OrderBy(x => x.ToString()))
+            foreach (var onion in onions)
             {
-                if (layeredEncryption == null)
+                yield return secretKey.Decrypt(onion);
+            }
+        }
+
+        private static string OnionEncrypt(IEnumerable<PubKey> pubKeys, string message)
+        {
+            string onion = null;
+            foreach (var pk in pubKeys.OrderBy(x => x.ToString()))
+            {
+                if (onion == null)
                 {
-                    layeredEncryption = pk.Encrypt(PublicKey.ToString());
+                    onion = pk.Encrypt(message);
                 }
                 else
                 {
-                    layeredEncryption = pk.Encrypt(layeredEncryption);
+                    onion = pk.Encrypt(onion);
                 }
             }
 
-            return layeredEncryption;
+            return onion;
         }
     }
 }

@@ -13,8 +13,16 @@ namespace CoinShuffleSimulation2.Messages
             Data = data;
         }
 
+        public Message(MessageType type, IEnumerable<string> data)
+        {
+            Type = type;
+            Data = string.Join(",,,", data);
+        }
+
         public MessageType Type { get; }
-        public string Data { get; }
+        private string Data { get; }
+        public string GetDataString() => Data;
+        public IEnumerable<string> GetDataCollection() => Data.Split(",,,", StringSplitOptions.RemoveEmptyEntries);
 
         public override string ToString()
         {
